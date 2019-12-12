@@ -1,72 +1,61 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from wtforms import Form, FloatField, SubmitField, validators, ValidationError
 import numpy as np
+import os
+from werkzeug.utils import secure_filename
 from sklearn.externals import joblib
 
-# 学習モデルを読み込み予測する
-def predict(parameters):
-    # モデル読み込み
-    model = joblib.load('./nn.pkl')
-    params = parameters.reshape(1,-1)
-    pred = model.predict(params)
-    return pred
-
-# ラベルからIrisの名前を取得
-def getName(label):
-    print(label)
-    if label == 0:
-        return "Iris Setosa"
-    elif label == 1: 
-        return "Iris Versicolor"
-    elif label == 2: 
-        return "Iris Virginica"
-    else: 
-        return "Error"
+# 画像のアップロード先のディレクトリ
+UPLOAD_FOLDER = '../uploads'
+# アップロードされる拡張子の制限
+ALLOWED_EXTENSIONS = set(['png', 'jpg', 'gif'])
 
 app = Flask(__name__)
 
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allwed_file(filename):
+    # .があるかどうかのチェックと、拡張子の確認
+    # OKなら１、だめなら0
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ファイルを受け取る方法の指定
+@app.route('/', methods=['GET', 'POST'])
+def uploads_file():
+    # リクエストがポストかどうかの判別
+    if request.method == 'POST':
+        # ファイルがなかった場合の処理
+        if 'pic' not in request.files:
+            print('ファイルがありません')
+            return redirect(request.url)
+        # データの取り出し
+        imgfile = request.files['pic']
+        print(imgfile)
+        # ファイル名がなかった時の処理
+        if imgfile.filename == '':
+            print('ファイルがありません')
+            return redirect(request.url)
+        # ファイルのチェック
+        if imgfile and allwed_file(imgfile.filename):
+            # 危険な文字を削除（サニタイズ処理）
+            filename = secure_filename(imgfile.filename)
+            # ファイルの保存
+            imgfile.save(os.path.join("..","uploads", filename))
+            # アップロード後のページに転送
+            return redirect(url_for('uploaded_file', filename=filename))
+    if request.method == 'GET':
+        return render_template('index.html')
+
+@app.route('/uploads/<filename>')
+# ファイルを表示する
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 # Flaskとwtformsを使い、index.html側で表示させるフォームを構築する
-class IrisForm(Form):
-    # SepalLength = FloatField("Sepal Length(cm)（蕚の長さ）",
-    #                  [validators.InputRequired("この項目は入力必須です"),
-    #                  validators.NumberRange(min=0, max=10)])
-
-    # SepalWidth  = FloatField("Sepal Width(cm)（蕚の幅）",
-    #                  [validators.InputRequired("この項目は入力必須です"),
-    #                  validators.NumberRange(min=0, max=10)])
-
-    # PetalLength = FloatField("Petal length(cm)（花弁の長さ）",
-    #                  [validators.InputRequired("この項目は入力必須です"),
-    #                  validators.NumberRange(min=0, max=10)])
-
-    # PetalWidth  = FloatField("petal Width(cm)（花弁の幅）",
-    #                  [validators.InputRequired("この項目は入力必須です"),
-    #                  validators.NumberRange(min=0, max=10)])
-    
+class Form(Form):
 
     # html側で表示するsubmitボタンの表示
     submit = SubmitField("判定")
-
-@app.route('/', methods = ['GET', 'POST'])
-def predicts():
-    form = IrisForm(request.form)
-    if request.method == 'POST':
-        if form.validate() == False:
-            return render_template('index.html', form=form)
-        else:            
-            SepalLength = float(request.form["SepalLength"])            
-            SepalWidth  = float(request.form["SepalWidth"])            
-            PetalLength = float(request.form["PetalLength"])            
-            PetalWidth  = float(request.form["PetalWidth"])
-
-            x = np.array([SepalLength, SepalWidth, PetalLength, PetalWidth])
-            pred = predict(x)
-            irisName = getName(pred)
-
-            return render_template('result.html', irisName=irisName)
-    elif request.method == 'GET':
-
-        return render_template('index.html', form=form)
 
 if __name__ == "__main__":
     app.run()
