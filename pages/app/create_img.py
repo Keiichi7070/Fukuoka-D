@@ -26,12 +26,12 @@ def analyze():
     from keras.models import model_from_json
 
     # JSON形式のデータを読み込んでモデルとして復元。学習で使うにはまたコンパイルが必要なので注意。
-    with open('select_img_best2.json', 'r') as f:
+    with open('select_img.json', 'r') as f:
         json_string = f.read()
     model = model_from_json(json_string)
 
     # モデルにパラメータを読み込む。前回の学習状態を引き継げる。
-    model.load_weights('param_best2.hdf5')
+    model.load_weights('param.hdf5')
 
     # コンパイル
     model.compile(loss='categorical_crossentropy',
