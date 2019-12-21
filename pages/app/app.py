@@ -9,13 +9,9 @@ from create_img import analyze
 import glob
 
 # 画像のアップロード先のディレクトリ
-UPLOAD_FOLDER = './uploads'
-
-app = Flask(__name__, static_folder="uploads")
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 path = './uploads'
+
+app = Flask(__name__, static_folder="image")
 
 # ファイルを受け取る方法の指定
 @app.route('/', methods=['GET', 'POST'])
@@ -29,13 +25,9 @@ def uploads_file():
             img.save(path + '/' + filename)
         
         analyze()
-        analyzedFolder = []
         analyzedImages = glob.glob('image/*.jpg')
-        for p in analyzedImages:
-            analyzedImagesName = p.filename
-            analyzedFolder.append(analyzedImagesName)
 
-        return render_template('result.html', images=analyzedFolder)
+        return render_template('result.html', images=analyzedImages)
 
     if request.method == 'GET':
         return render_template('index.html')
